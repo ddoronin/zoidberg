@@ -1,0 +1,9 @@
+[package]
+name = "zoid"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.18", features = ["full"] }
+futures = { version = "0.3.21" }
+async-trait = { version = "0.1.56" }
