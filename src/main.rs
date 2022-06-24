@@ -1,7 +1,5 @@
-mod lib;
-
-use std::time::Duration;
-use lib::{Actor, start_actor};
+use zoid::thread_pool::ThreadPool;
+use zoid::{Actor, start_actor};
 use tokio::runtime::Runtime;
 
 struct EchoActor {
@@ -23,40 +21,73 @@ impl Actor for EchoActor {
         println!("-> {:?}", self.state);
     }
 }
+
+use std::collections::HashMap;
+use std::time::Duration;
 use futures::executor::block_on;
 
 #[tokio::main]
 async fn main() {
-    let (actor_receiver, actor_join_handle) = start_actor::<EchoActor, String>();
-    let actor_sender = actor_receiver.await.unwrap();
+    let mut pool = ThreadPool::new(2).await;
+    let alice_actor_sender = start_actor::<EchoActor, String>(&mut pool).await;
+    let bob_actor_sender = start_actor::<EchoActor, String>(&mut pool).await;
+    let tom_actor_sender = start_actor::<EchoActor, String>(&mut pool).await;
 
-    let actor_sender1 = actor_sender.clone();
+    let alice_actor_sender = alice_actor_sender.clone();
     std::thread::spawn(move || {
         block_on(async move {
-            actor_sender1.send(String::from("1 foo")).await;
+            alice_actor_sender.send(String::from("alice: foo")).await;
             std::thread::sleep(Duration::from_secs(1));
-            actor_sender1.send(String::from("1 bar")).await;
+            alice_actor_sender.send(String::from("alice: bar")).await;
             std::thread::sleep(Duration::from_secs(1));
-            actor_sender1.send(String::from("1 foo bar")).await;
+            alice_actor_sender.send(String::from("alice: foo bar")).await;
             std::thread::sleep(Duration::from_secs(1));
-            actor_sender1.send(String::from("1 foooooooooo baaaaaar")).await;
+            alice_actor_sender.send(String::from("alice: foooooooooo baaaaaar")).await;
         });
     });
 
-    let actor_sender2 = actor_sender.clone();
+    let bob_actor_sender = bob_actor_sender.clone();
     std::thread::spawn(move || {
         block_on(async move {
-            actor_sender2.send(String::from("2 foo")).await;
+            bob_actor_sender.send(String::from("bob: foo")).await;
             std::thread::sleep(Duration::from_secs(1));
-            actor_sender2.send(String::from("2 bar")).await;
+            bob_actor_sender.send(String::from("bob: bar")).await;
             std::thread::sleep(Duration::from_secs(1));
-            actor_sender2.send(String::from("2 foo bar")).await;
+            bob_actor_sender.send(String::from("bob: foo bar")).await;
             std::thread::sleep(Duration::from_secs(1));
-            actor_sender2.send(String::from("2 foooooooooo baaaaaar")).await;
+            bob_actor_sender.send(String::from("bob: foooooooooo baaaaaar")).await;
         });
     });
 
-    if let Err(error) = actor_join_handle.await {
-        println!("RIP actor :'( {:?}", error);
-    }
+    let tom_actor_sender = tom_actor_sender.clone();
+    std::thread::spawn(move || {
+        block_on(async move {
+            tom_actor_sender.send(String::from("tom: foo")).await;
+            std::thread::sleep(Duration::from_secs(1));
+            tom_actor_sender.send(String::from("tom: bar")).await;
+            std::thread::sleep(Duration::from_secs(1));
+            tom_actor_sender.send(String::from("tom: foo bar")).await;
+            std::thread::sleep(Duration::from_secs(1));
+            tom_actor_sender.send(String::from("tom: foooooooooo baaaaaar")).await;
+        });
+    });
+
+    tokio::spawn(async {
+        loop {
+        }
+    }).await;
+    // tokio::select! {
+    //     Err(error) = alice_actor_join_handle => {
+    //         println!("RIP Alice :'( {:?}", error);
+    //     },
+    //     Err(error) = bob_actor_join_handle => {
+    //         println!("RIP Bob :'( {:?}", error);
+    //     }
+    // };
+    // // if let Err(error) = alice_actor_join_handle.await {
+    // //     println!("RIP Alice :'( {:?}", error);
+    // // }
+    // if let Err(error) = bob_actor_join_handle.await {
+    //     println!("RIP Bob :'( {:?}", error);
+    // }
 }
